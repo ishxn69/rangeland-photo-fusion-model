@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(cp /Users/ishangadekar/.claude/plans/analysis-scope-md-a1942394-final-propos-functional-conway.md analysis/plan.md)",
-      "Bash(uv --version)"
-    ]
-  }
-}
