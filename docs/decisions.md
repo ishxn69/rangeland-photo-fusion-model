@@ -21,3 +21,8 @@ One entry per choice: the options, what was picked, and why.
 - **Options:** Google Earth Engine vs Microsoft Planetary Computer; GEE Community tier (150 EECU-h, no billing) vs Contributor (1,000 EECU-h, billing account required).
 - **Picked:** Google Earth Engine, academic non-commercial registration, Community tier. Planetary Computer is the backup.
 - **Why:** GEE filters by date and cloud and crops on its servers, so each visit returns only a 10×10-pixel Sentinel-2 crop. The expected use is a few EECU-hours, well under 150, and Community needs no billing account. The project can upgrade to Contributor later if needed.
+
+### 2026-11-01: Python environment and package manager
+- **Options:** `venv` + `pip` with a `requirements.txt` vs `uv` with `pyproject.toml`.
+- **Picked:** `uv`. `pyproject.toml` lists the packages the project needs, `uv sync` installs them into a project-local `.venv`, and `uv.lock` records the exact versions installed. Scripts run with `uv run`.
+- **Why:** committing `uv.lock` makes the code run the same on the Mac and in Colab, which covers the "pinned versions" part of the reproducibility constraint. uv is also faster than pip, and `uv run` means there's no venv to activate.
