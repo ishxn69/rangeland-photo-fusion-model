@@ -69,4 +69,39 @@ One entry per choice: the options, what was picked, and why.
 - **Why this collection:** "SR" means surface reflectance: the images are corrected for haze in the air, so the values are closer to what the ground itself reflects. It's also what the 2026-10-31 choice of Earth Engine already assumed, and Earth Engine crops images on its servers, which keeps the code simple.
 - **Why not start earlier:** the earlier start adds about 110 candidate visits on paper, but few of them are likely to survive. Only one Sentinel-2 satellite was flying until 2017, so a visit has fewer images to choose from, and fewer of those will be clear of cloud. We also don't need them: 406 is about double the 200 visits we first guessed, and 389 remain after removing plots not aligned to the grid.
 - **Trade-off:** the data doesn't cover 2015 to early 2017, so results say nothing direct about those years. 389 is also an upper limit until visits are checked for clear images.
-- **If Earth Engine fails:** it hasn't been tested yet (C2 and C3). If we switch to Planetary Computer, every visit moves to it, because the two process images differently and mixing them could make visits look different for reasons unrelated to the land.
+- **If Earth Engine fails:** C2 and C3 passed on 2026-11-02, but only for one plot and visit. If we switch to Planetary Computer, every visit moves to it, because the two process images differently and mixing them could make visits look different for reasons unrelated to the land.
+
+### 2026-11-02: Maximum gap between satellite image and field visit
+**Options:** ±30 days or ±60 days. **Picked:** ±30 days, using the closest image that passes a clear-pixel threshold (see "Clear-pixel threshold" below), with no expert input. **Why:** ±60 days adds little and allows more mismatch between image and labels. Of the 389 candidate visits, 384 have an image with up to 10% tile cloud within ±30 days, and 60 days adds only 5, all from one area in the same week. The closest such image is a median of 2 days from the visit, and within 18 days for 95% of visits. A longer gap could also favour the photos, which are taken around the visit date. **Sensitivity check:** if time allows, rerun at ±15 days (363 visits) instead of ±60, because closest-image selection would leave most visits unchanged at ±60. **Limitation:** these counts use Planetary Computer scene records and whole-tile cloud, so Earth Engine and plot-level counts may differ.
+
+### 2026-11-02: Which Sentinel-2 bands to use
+- **The problem:** Sentinel-2 records 13 bands, but `COPERNICUS/S2_SR_HARMONIZED` holds only 12 because it has no B10. We need to choose which ones go into each 10×10 crop.
+- **Options:**
+  - All 12 available bands.
+  - The 10 bands with pixels of 20 m or finer, adding red edge (B5, B6, B7, B8A) to the set below.
+  - 6 bands: B2, B3, B4, B8, B11 and B12.
+- **Picked:** the 6 bands: blue, green, red, near-infrared and two shortwave infrared.
+- **Why these 6:**
+  - **Dry versus bare:** dry plants and bare soil look alike in visible and near-infrared light, so separating them usually relies on shortwave infrared ([2021 study](https://doaj.org/article/06131ebb26f94c20a7b9b52cda0682b6)). Dry cover is the national map's weakest component and the project's main test, so B11 and B12 are essential.
+  - **Green cover:** living plants absorb red light and strongly reflect near-infrared, so B4 and B8 help detect them.
+  - **The planned simple features:** `analysis/plan.md` uses NDVI and NDTI. NDVI needs B4 and B8, and NDTI needs B11 and B12.
+  - **Fit with the national map:** the TERN Seasonal Fractional Cover JRSRP v3.0 map's related surface reflectance product uses these same 6 band types, and its cover model was trained on Landsat ([reflectance record](https://data.gov.au/data/dataset/1e572275-0bab-4c2a-8360-e04eed876f4b), [cover record](https://geonetwork.tern.org.au/geonetwork/srv/api/records/13810293-c6b5-442b-bfcd-817700738e0d)). We didn't confirm that these are the exact inputs to the cover model.
+- **Why not the others:**
+  - **B10:** not in this collection.
+  - **B1 and B9:** they're designed to measure aerosols and water vapour, not the ground, and their 60 m pixels are over half the width of the 100 m plot.
+  - B5, B6, B7 and B8A: I left these out as a design choice, not because we tested that they are unhelpful. They are 20 m bands, so they do not give sharper spatial detail than the 10 m bands we already use. They measure the “red edge” part of the spectrum—the range between red light (B4) and near-infrared (B8)—which can help distinguish vegetation condition and crop type. However, because our dataset has only a few hundred field visits, we preferred a smaller set of inputs to reduce the risk of the model fitting noise. This reduces the number of values per crop from 1,000 to 600.
+- **Limitations:**
+  - No band comparison was run on our data.
+  - The red-edge bands could still help, and we found no source on what they add to this specific task. Testing them later means downloading the crops again.
+  - B11 and B12 are 20 m bands placed on a 10 m grid, so they have less spatial detail than the crop's size suggests.
+
+### 2026-11-02: Clear-pixel threshold for satellite crops
+- **The problem:** a pixel counts as clear when its `cs_cdf` score is at least 0.60 and it has data in all 6 bands. We also need a rule for how many of a crop's 100 pixels must be clear before we accept the image.
+- **Options:** require all pixels to be clear, or accept a lower share and handle the gaps.
+- **Picked:** 100%, provisionally. If no image within ±30 days passes, the visit has no usable satellite crop.
+- **Why:** every accepted crop is complete, so no model or simple feature has to handle missing pixels.
+- **Evidence so far:** C3 ran on one visit (NTABRT0001, 2020-08-01). All 13 images in the window were 100% clear, and the closest was taken on the visit date. That was a dry-season visit in central Australia, so it shows clear images pass, but says nothing about how many visits 100% will cost.
+- **Limitations:**
+  - The value was chosen without testing alternatives on our data.
+  - C3 didn't exercise the cloud mask on a cloudy image, or the `-1` value that marks masked pixels.
+  - Requiring 100% could remove more visits from cloudier regions and seasons, which could skew the dataset.
