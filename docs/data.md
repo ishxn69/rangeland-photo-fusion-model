@@ -3,7 +3,7 @@
 Facts about the project's data sources: what they contain, their limits and how to read them.
 Choices based on these facts belong in `docs/decisions.md`.
 
-Last updated: 2026-11-01
+Last updated: 2026-11-02
 
 ## Sources
 
@@ -11,9 +11,9 @@ Last updated: 2026-11-01
 |---|---|---|---|
 | AusPlots, via `ausplotsR` 2.0.5 | Ground measurements of cover (labels) | No account | Working |
 | TERN EcoImages | Ground photos | No key for search or previews | Working |
-| Sentinel-2, via Earth Engine | Satellite images | Registered Cloud project | Not yet tested |
+| Sentinel-2, via Earth Engine | Satellite images | Registered Cloud project | Working for one plot on 2 Nov (C3); cloudy images not tested |
 | Sentinel-2, via Planetary Computer | Backup satellite images | No account | Search and signing work; cropping not tested |
-| SILO | Daily weather | Email as username; no account | Not yet tested |
+| SILO | Daily weather | Email as username; no account | Working for one plot on 2 Nov (C1) |
 
 Data licences and credits are in `DATA_ATTRIBUTION.md`.
 
@@ -113,16 +113,40 @@ These are upper limits, not usable visits. A usable visit also needs a clear sat
 | Planetary Computer `sentinel-2-l2a` | 2015-06-27 | Processed differently from Earth Engine; don't mix sources in one dataset |
 
 - **Scaling:** reflectance is stored ×10,000, so multiply by `0.0001`.
-- **Band resolution:** B2, B3, B4 and B8 are 10 m. B11 and B12 are 20 m, so they need a shared 10 m grid to get matching shapes.
+- **Bands:** Sentinel-2 records 13 bands, and this collection holds 12 (no B10). The project uses 6, so each 10×10 crop holds 600 numbers. The full reasoning is in `docs/decisions.md`.
+
+  | Band | Light | Pixel size | Used? | Why |
+  |---|---|---|---|---|
+  | B1 | Aerosols | 60 m | No | Atmosphere band; pixels too coarse for a 100 m plot |
+  | B2 | Blue | 10 m | Yes | Visible colour of the ground |
+  | B3 | Green | 10 m | Yes | Visible colour of the ground |
+  | B4 | Red | 10 m | Yes | Living plants absorb it; needed for NDVI |
+  | B5 | Red edge 1 | 20 m | No | Judgement call, not tested |
+  | B6 | Red edge 2 | 20 m | No | Judgement call, not tested |
+  | B7 | Red edge 3 | 20 m | No | Judgement call, not tested |
+  | B8 | Near-infrared | 10 m | Yes | Living plants reflect it strongly; needed for NDVI |
+  | B8A | Red edge 4 (narrow near-infrared) | 20 m | No | Judgement call, not tested |
+  | B9 | Water vapour | 60 m | No | Atmosphere band; pixels too coarse for a 100 m plot |
+  | B10 | Not in this collection | n/a | No | Not available |
+  | B11 | Shortwave infrared 1 | 20 m | Yes | Helps separate dry plants from bare soil; needed for NDTI |
+  | B12 | Shortwave infrared 2 | 20 m | Yes | Helps separate dry plants from bare soil; needed for NDTI |
+
+- **Band resolution:** B11 and B12 are 20 m, so they need a shared 10 m grid to get matching shapes. Neighbouring cells can repeat the same value, so they have less detail than B2, B3, B4 and B8.
 - **Cloud fields:**
   - `QA60` is empty from 2022-01-25 to 2024-02-28.
   - `CLOUDY_PIXEL_PERCENTAGE` describes the whole ~100 km tile, not the plot.
+- **Clear pixels:** a pixel counts as clear when `cs_cdf` is at least 0.60 and all 6 bands have data. A crop must currently be 100% clear (see `docs/decisions.md`).
+- **Test crop:** `plans/checks/earth_engine.py` on 2026-11-02, for NTABRT0001 (2020-08-01):
+  - **Images:** 13 within ±30 days, about 5 days apart, and all 100% clear. The chosen image is from the visit date.
+  - **Output:** a `(10, 10)` structured array on grid `EPSG:28353`, with its west edge at 319429.4 and north edge at 7534834.5.
+  - **Mean reflectance:** B2 0.040, B3 0.066, B4 0.131, B8 0.203, B11 0.305, B12 0.246.
+  - **Limit:** this is one dry-season visit, so it doesn't show how often other plots have a fully clear image.
 - **Sparse early data:** at 5 test points, the first scene was 18 Aug – 24 Nov 2015, and 2016 had only 17–56 scenes per point. Only Sentinel-2A was flying until Sentinel-2B joined in 2017.
 - **Offset:** the +1000 offset affects scenes from 2022-01-25 on. It doesn't apply here if windows end by 2021-11-28 (last photo + 30 days).
 
 ## SILO
 
-Not yet tested (C1).
+Tested in C1 on 2026-11-02, for the grid cell at -22.30, 133.25 (NTABRT0001), from 2019-08-01 to 2020-07-31. It returned a header and 366 daily rows.
 
 - Returns daily values, which need adding up to monthly.
 - Dates are `YYYYMMDD`, and coordinates must be on the 0.05° grid.
@@ -138,6 +162,5 @@ Not yet tested (C1).
 
 - How many visits in the final set lack individual frames
 - Whether to use standard or ground-only fractional cover (F9)
-- Maximum gap between satellite image and field visit (`scope.md`)
 - Final usable visit count after cloud and date filtering
 - Python version in Colab (D1)
