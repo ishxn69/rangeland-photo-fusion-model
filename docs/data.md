@@ -155,12 +155,16 @@ Tested in C1 on 2026-11-02, for the grid cell at -22.30, 133.25 (NTABRT0001), fr
 
 ## Storage
 
-- `data/` and `.venv` stay outside Google Drive, with the data location set by `DATA_DIR`.
+- `data/` lives in the project folder on Google Drive, ignored by Git, as one file per visit. Its location is set by `DATA_DIR`.
+- `.venv` stays off Drive on both machines: `~/.venvs/cv_capstone` on the Mac and `/content/.venv` on Colab.
 - About 400 visits × 3 sequences × 6 frames ≈ 7,200 photos ≈ 0.5 GB at 640 px.
+
+## Python version
+
+- Colab runs Python 3.13.18 (checked 2026-11-03), so the project pins 3.13 on both machines.
 
 ## Open questions
 
 - How many visits in the final set lack individual frames
 - Whether to use standard or ground-only fractional cover (F9)
 - Final usable visit count after cloud and date filtering
-- Python version in Colab (D1)

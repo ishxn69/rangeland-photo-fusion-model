@@ -24,7 +24,7 @@ One entry per choice: the options, what was picked, and why.
 
 ### 2026-11-01: Python environment and package manager
 - **Options:** `venv` + `pip` with a `requirements.txt` vs `uv` with `pyproject.toml`.
-- **Picked:** `uv`. `pyproject.toml` lists the packages the project needs, `uv sync` installs them into a project-local `.venv`, and `uv.lock` records the exact versions installed. Scripts run with `uv run`.
+- **Picked:** `uv`. `pyproject.toml` lists the packages the project needs, `uv sync` installs them into a `.venv` kept outside Google Drive (see "Where code, data and environments live" below), and `uv.lock` records the exact versions installed. Scripts run with `uv run`.
 - **Why:** committing `uv.lock` makes the code run the same on the Mac and in Colab, which covers the "pinned versions" part of the reproducibility constraint. uv is also faster than pip, and `uv run` means there's no venv to activate.
 
 ### 2026-11-01: Choosing 6 frames per photo sequence
@@ -105,3 +105,8 @@ One entry per choice: the options, what was picked, and why.
   - The value was chosen without testing alternatives on our data.
   - C3 didn't exercise the cloud mask on a cloudy image, or the `-1` value that marks masked pixels.
   - Requiring 100% could remove more visits from cloudier regions and seasons, which could skew the dataset.
+
+### 2026-11-02: Where code, data and environments live
+- **Options:** keep data in the Mac home directory vs keep it on Google Drive.
+- **Picked:** data lives in `data/` inside the project folder on Drive, ignored by Git, as one file per visit. `.venv` stays off Drive on both machines (`~/.venvs/cv_capstone` on the Mac, `/content/.venv` on Colab). Git history stays on the Mac and reaches Colab only through a clone from GitHub.
+- **Why:** Colab needs to read the data and save results, and 5 TB covers the storage. Drive still handles thousands of small files badly, and each machine needs its own `.venv`.
