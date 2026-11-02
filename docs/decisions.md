@@ -110,3 +110,50 @@ One entry per choice: the options, what was picked, and why.
 - **Options:** keep data in the Mac home directory vs keep it on Google Drive.
 - **Picked:** data lives in `data/` inside the project folder on Drive, ignored by Git, as one file per visit. `.venv` stays off Drive on both machines (`~/.venvs/cv_capstone` on the Mac, `/content/.venv` on Colab). Git history stays on the Mac and reaches Colab only through a clone from GitHub.
 - **Why:** Colab needs to read the data and save results, and 5 TB covers the storage. Drive still handles thousands of small files badly, and each machine needs its own `.venv`.
+
+### 2026-11-03: Sequences with too few frames
+- **The problem:** a sequence is one panorama: a set of photos taken while turning in a full circle at one spot. The project takes 6 frames from each of a visit's 3 sequences, 18 in all, but sequences vary in length. In an earlier sample, most held 11–45 frames (median 23), and one held a single frame. Some visits also have fewer than 3 sequences.
+- **Options:**
+  - Skip short sequences and keep the visit with fewer photos. No visits are lost, but the code must handle visits with different numbers of photos.
+  - Repeat frames to reach 6. The photo count stays the same, but the copies add no new information.
+  - Drop any visit without 3 full sequences.
+- **Picked:** a sequence needs at least 7 frames, not 6, because the first is dropped as a likely label frame (see "Choosing 6 frames per photo sequence" above), leaving 6 to pick from. Skip shorter sequences. A visit needs at least 3 usable sequences, or it's dropped.
+- **Why:** every visit then has 18 distinct photos (3 × 6), so no model has to handle a different number of photos per visit. This also follows the plan's rule of dropping visits with missing inputs, and it costs little.
+- **Effect on the project:** the short-sequence rule alone changes almost nothing, but the 3-sequence rule lowers the upper limit on usable visits from 389 to 379. That limit can still fall, because visits haven't been checked for clear satellite images.
+- **Evidence:** EcoImages frame listings for all 389 candidate visits on 2026-11-03. Their 1,193 sequences had a median of 21 frames and a maximum of 47.
+  - Only 1 sequence had fewer than 7 frames: sequence 1 of WAACEK0003 (2021-06-03), with 2.
+  - Every candidate visit listed at least one frame.
+  - 10 visits have fewer than 3 usable sequences, leaving 379.
+
+  | Sequences listed for the visit | Visits |
+  |---|---|
+  | 4 | 37 |
+  | 3 | 343 |
+  | 2 | 7 |
+  | 1 | 2 |
+
+- **Limitations:**
+  - 7 of the 10 dropped visits are in Western Australia in June–July 2021, so that region and period will be slightly underrepresented.
+  - The rule counts frames listed, not whether they download or show the plot.
+- **Still open: visits with 4 sequences.** 37 of the 389 visits (about 1 in 10) have a fourth sequence, and we don't yet know why. It could be a retake, an extra spot on the plot or a different kind of view; none of these has been tested. Using sequences 1–3 keeps every visit at 18 photos, but could keep a bad panorama if the fourth was a retake. Using all 4 gives those visits 24 photos, and dropping them loses 37 visits for no proven reason. Checking thumbnails from a few of these visits should settle it.
+
+### 2026-11-03: Matching visits to photo dates
+- **The problem:** survey and photo dates can differ. NTABRT0001's 2012-03-19 visit has photos dated 2012-03-20, so matching on the exact date would lose real pairs.
+- **Options:** exact date only; a window of a few days; a longer window.
+- **Picked:** match each visit to the closest photo date at the same site, up to 7 days either way. The date gap is saved for each visit.
+- **Why:** 42 of the 389 candidate visits would be lost by matching on exact dates. A longer window adds few visits and allows more mismatch between photos and labels. A gap of up to 7 days assumes the ground changes little in that time, which we haven't tested, but most pairs are much closer than that.
+- **Effect on the project:** each visit's photos should come from the same trip as its labels, and those 42 visits stay in the dataset. Only 6 of the 389 pairs are 2–6 days apart.
+- **Evidence:** on 2026-11-03, using the same matching as `plans/checks/count_visits.R`.
+
+  | Gap between visit and photos | Of the 389 candidates |
+  |---|---|
+  | 0 days | 347 |
+  | 1 day | 36 |
+  | 2 days | 3 |
+  | 4–6 days | 3 |
+
+  - Of the 511 visits from 2017-03-28 on at sites with panoramas, 406 fall within 7 days (389 of them aligned to the grid). Another 6 are 8–30 days away, 2 are 31–90 days away, and 97 are over a year away, which means those photos come from a different trip.
+  - No two of the 389 visits match the same photo date at a site.
+- **Limitations:**
+  - We don't know why the dates differ, and we didn't look at the 3 visits with gaps of 4–6 days.
+  - Results may shift slightly if TERN adds or changes photos.
