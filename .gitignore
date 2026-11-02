@@ -13,7 +13,8 @@ plans/
 
 # Secrets, data and environments
 .env
-data/
+/data/
 .venv/
 __pycache__/
 .ipynb_checkpoints/
+.vscode/
