@@ -11,6 +11,7 @@ One entry per choice: the options, what was picked, and why.
 - **Options:** find a real TERN or agency contact; write for no one in particular; invent a realistic persona.
 - **Picked:** an invented persona, Dr. John Doe, a senior remote-sensing scientist at a state environment department who decides whether the team adopts ground photos. Renamed on 2026-10-30 because the first name belonged to a real person.
 - **Why:** this is a self-directed portfolio project with no real client. A concrete persona keeps the work pointed at a decision and sets what the deliverable must look like (a one-page verdict a non-specialist can defend in one slide). It can be swapped for a real contact if one turns up.
+- **End users (added 2026-11-13):** Dr. Doe decides whether to adopt photos. His team improves the cover maps that pastoral lease inspectors and grazing advisers use, and through them station managers, who judge grazing pressure and erosion risk (see `analysis/scope.md`). So what counts as a good estimate is set by what those users need to see on the ground. This is why the labels describe ground cover (see "Which cover labels to use (F9)" below).
 
 ### 2026-10-28: Constraints and maintenance
 - **Options:** production-style deployment vs portfolio-style reproducibility.
@@ -157,3 +158,38 @@ One entry per choice: the options, what was picked, and why.
 - **Limitations:**
   - We don't know why the dates differ, and we didn't look at the 3 visits with gaps of 4–6 days.
   - Results may shift slightly if TERN adds or changes photos.
+
+### 2026-11-13: Which cover labels to use (F9)
+- **The problem:** `ausplotsR::fractional_cover()` can calculate green / dry / bare cover in two ways. The default counts the top layer at each point, trees and shrubs included. `ground_fractional = TRUE` leaves out the tall woody vegetation and describes the ground surface: grass, litter and bare soil.
+- **Options:** `ground_fractional = FALSE` (the default, all layers) vs `ground_fractional = TRUE` (ground layer).
+- **Picked:** `ground_fractional = TRUE`. It is the only label the models learn from. "Dry" = `brown`. Optional, if time allows: the `FALSE` version is saved as extra columns (`green_all`, `dry_all`, `bare_all`) but never modelled.
+- **Why:**
+  - The ground surface is what controls runoff and erosion. Dr. Doe's team improves maps used by inspectors and grazing advisers, and through them station managers (see "Stakeholder" above). This is what they need to see.
+  - A paddock can have a lot of tree canopy and still have little protective grass or litter underneath. The all-layer label counts the canopy leaves as "green", which hides that bare, erosion-prone ground. The ground label shows it.
+- **Considered against:**
+  - Sentinel-2 looks down on the tree tops. At wooded sites, the satellite-only methods have to estimate a surface they can't directly see, so they start at a disadvantage.
+  - Photos are taken at ground level and can see under trees. Part of any photo gain at wooded sites will come from that. This is a real advantage of photos, but the report must say so, so the gain isn't read as photos being better everywhere.
+  - The national fractional-cover map estimates cover as seen from above, trees included (`analysis/scope.md`). Its published errors (4.6 green / 9.8 dry / 6.9 bare) aren't a like-for-like benchmark for ground-cover labels.
+- **Rule:** the label is fixed before any model runs, and the pass mark is unchanged. Models are not trained on both versions so the better one can be picked afterwards.
+- **Limitations:**
+  - How much the two versions differ hasn't been measured. An earlier note in `docs/data.md` says the numbers are "quite different", but which sites it was based on wasn't recorded. If time allows, the difference will be measured and recorded there.
+  - The pass mark's 1.5-point dry-cover threshold was set as about 15% of the national map's 9.8-point dry-cover error (`analysis/scope.md`). That error comes from the all-layer map, so the anchor isn't like-for-like. The threshold is kept unchanged, because it was fixed before any results, and the report should say where it came from.
+  - The difficulty of the satellite baseline depends on how wooded each site is. That wasn't controlled for.
+- **Future work:** report the photo gain separately for open and wooded sites, to show where photos help.
+
+### 2026-11-15: Pass mark and methods (fixed before any model runs)
+- **The question:** do ground photos make the green, dry and bare cover estimates more accurate than satellite and weather data alone?
+- **Main comparison:** method #2 (satellite + weather) against method #3 (satellite + weather + photos), across 15 test runs (5 location groups × 3 random groupings; all visits of one site stay in the same group).
+- **Pass mark** (from `analysis/scope.md`, unchanged). All three must hold:
+  1. Dry-cover MAE drops by 1.5 points or more.
+  2. Method #3 has a lower dry-cover MAE than method #2 in 12 or more of the 15 test runs.
+  3. Green MAE and bare MAE do not rise by more than 0.5 points.
+- **Methods:**
+  1. Random forest: satellite only.
+  2. Random forest: satellite + weather.
+  3. Random forest: satellite + weather + photos. The verdict compares this with #2.
+  4. Linear model: all inputs.
+  5. Optional, only if time allows on 17 Nov: linear model on photo features only. It does not change the verdict.
+- **Dropped:** the earlier photo-features + one-neural-layer method, and the optional all-layer label columns (`green_all`, `dry_all`, `bare_all`) mentioned under F9.
+- **Why record it now:** the pass mark and method list are committed before any model runs, so the verdict can't be tuned to the results.
+- **Rule:** neither the pass mark nor the method list changes after results are seen. If methods must be cut for time, #4 goes first, then #1; #2 and #3 are mandatory.

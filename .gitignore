@@ -4,6 +4,7 @@ Towards_Space-to-Ground_Data_Availability_for_Agriculture_Monitoring.pdf
 analysis/scope.md
 analysis/plan.md
 analysis/log.md
+analysis/plan-minimum.md
 theory_notes/
 .claude/
 
@@ -19,3 +20,6 @@ plans/
 __pycache__/
 .ipynb_checkpoints/
 .vscode/
+
+# Agent handoff notes
+handoff/

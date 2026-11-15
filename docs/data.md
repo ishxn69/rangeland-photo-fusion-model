@@ -3,7 +3,7 @@
 Facts about the project's data sources: what they contain, their limits and how to read them.
 Choices based on these facts belong in `docs/decisions.md`.
 
-Last updated: 2026-11-02
+Last updated: 2026-11-13
 
 ## Sources
 
@@ -37,8 +37,9 @@ These are upper limits, not usable visits. A usable visit also needs a clear sat
 
 - `fractional_cover()` returns `bare`, `brown` and `green`, plus `NA` when some hits are unknown.
 - "Dry" cover is `brown`.
-- `ground_fractional=TRUE` covers the ground layer only and gives quite different numbers.
-- Example, NTABRT0001 (`bare / brown / green`, from `plans/checks/labels_one_site.R` on 2026-11-01):
+- `ground_fractional=TRUE` leaves out tall woody vegetation and covers the ground layer only. The project uses it (see "Which cover labels to use (F9)" in `docs/decisions.md`).
+- **How far apart the two versions are:** an earlier note said `TRUE` gives "quite different numbers", but which sites and values it was based on wasn't recorded. Treat the size of the difference as unmeasured.
+- Example, NTABRT0001 (`bare / brown / green`, from `plans/checks/labels_one_site.R` on 2026-11-01). The script calls `fractional_cover()` with the default `ground_fractional = FALSE`, so these are **not** the project's training labels:
   - 2012-03-19: 18.2 / 33.3 / 48.5
   - 2020-08-01: 25.2 / 33.8 / 41.0
   - **Totals:** `bare`, `brown` and `green` add up to 100% in both NTABRT0001 visits (18.2 + 33.3 + 48.5 and 25.2 + 33.8 + 41.0).
@@ -166,5 +167,5 @@ Tested in C1 on 2026-11-02, for the grid cell at -22.30, 133.25 (NTABRT0001), fr
 ## Open questions
 
 - How many visits in the final set lack individual frames
-- Whether to use standard or ground-only fractional cover (F9)
+- How far apart the default and ground-only labels are, overall and at wooded sites (F9 is decided; see `docs/decisions.md`)
 - Final usable visit count after cloud and date filtering
