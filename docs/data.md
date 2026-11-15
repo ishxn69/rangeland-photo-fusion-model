@@ -3,7 +3,7 @@
 Facts about the project's data sources: what they contain, their limits and how to read them.
 Choices based on these facts belong in `docs/decisions.md`.
 
-Last updated: 2026-11-13
+Last updated: 2026-11-15
 
 ## Sources
 
@@ -32,6 +32,25 @@ Counted with `plans/checks/count_visits.R` on 2026-11-01. Counts may rise if TER
 | Visits after the latest photo date (no photos on EcoImages) | 87 |
 
 These are upper limits, not usable visits. A usable visit also needs a clear satellite image near the visit date, and this count doesn't check for one.
+
+### Candidate visit list (2026-11-15)
+
+Made by `R/extract_labels.R`, which applies the rules in `docs/decisions.md` in order. TERN had added visits since 2026-11-01, so the counts differ from the table above.
+
+| Rule | Visits |
+|---|---|
+| AusPlots visits (all) | 1,147 |
+| ...on or after 2017-03-28 | 564 |
+| ...and plot aligned to the grid | 534 |
+| ...and panorama photos within 7 days | 388 |
+| ...and 3 or more sequences with 7 or more frames | **378** |
+
+- **378, not 379:** the earlier count was 389 at the "within 7 days" rule and 379 after the sequence rule. The 10 visits removed by the sequence rule are the same as before. The missing visit drops out at the 7-day rule. We did not find which one, because the old list was not saved.
+- **Output files** (in `data/`, not committed): `labels.csv` (`site, visit_date, latitude, longitude, green, dry, bare`) and `visits.csv` (adds `site_unique`, `photo_id`, `photo_date`, `date_gap`, `n_seq_usable`). Both have 378 rows, no missing values, and every label row adds to 100.
+- **Labels:** made with `ground_fractional = TRUE`. Unknown and `NA` hits were removed, and green, dry and bare were scaled again to add to 100. We did not count how many hits this removed.
+- **Date gaps:** 338 visits have a 0-day gap, 35 have 1 day, and 5 have 2–6 days. 37 visits have 4 usable sequences (sequences 1–3 are used).
+- **Mean cover:** green 19%, dry 48%, bare 33%.
+- **Frame lists:** saved to `data/frames/` (one JSON per visit, 388 files, including the 10 visits removed later). The photo script can read them.
 
 ## AusPlots labels
 
