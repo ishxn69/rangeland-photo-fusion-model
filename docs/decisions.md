@@ -219,3 +219,35 @@ One entry per choice: the options, what was picked, and why.
   - A visit with 40% unknown hits has labels that are about 1.7 times its known cover. Errors for these visits may be larger.
   - Several of the highest values come from the same area (site codes starting SAAEYB). We did not check why.
 - **Future work:** after the results exist, run method #2 and method #3 again without the 11 visits above 10%. If the verdict is the same, say so in the report. If it is different, report that as a limitation. Do not change the dataset or the pass mark.
+
+### 2026-11-15: Weather months and grid cell
+- **The problem:** SILO gives daily values on a 0.05° grid. The plan needs 12 monthly values before each visit, and does not say what a "month" is or which point to use.
+- **Options for the months:**
+  - The 12 calendar months before the visit month. This leaves out up to 30 days just before the visit.
+  - 12 months counted back from the visit date.
+- **Picked:** 12 months counted back from the visit date. Month 1 is the month that ends the day before the visit (for a visit on 2020-08-15: 2020-07-15 to 2020-08-14). The visit day is not included. For each month, save the total rain (mm) and the mean daily maximum and minimum temperature (°C): `rain_m01..m12`, `tmax_m01..m12`, `tmin_m01..m12` in `data/weather.csv`.
+- **Why:** the weeks just before a visit control how green the grass is. Calendar months would give two visits in the same month the same weather, even if one is at the start and one is at the end.
+- **Grid cell:** round the plot's SW corner to the nearest 0.05° grid point. A cell is about 5 km wide, so moving to the plot centre (about 70 m away) almost never changes the cell. Sentinel-2 still uses the centre (Step 3).
+- **Requests:** one request per grid cell, covering all its visits, saved to `data/silo/`. SILO asks users not to request the same data again.
+
+### 2026-11-15: Exact frame positions in a sequence
+- **The problem:** "6 evenly spaced frames without using both ends" (see "Choosing 6 frames per photo sequence") does not give the exact frames. After the label frame is dropped, a sequence has `n` frames, sorted by `file_created`.
+- **Options:**
+  - Start at the first frame and step `n/6` (frames `0, n/6, …`). This uses the first end but not the last.
+  - Take the middle of 6 equal slices (frame `floor((i + 0.5) × n / 6)` for `i = 0…5`).
+- **Picked:** the middle of 6 equal slices. Use the first 3 sequences (by sequence number) that have 7 or more frames.
+- **Why:** it uses neither end, so the two nearly identical end views are never both picked, and the frame just after the label frame is not used. The spaces between the picked frames are equal.
+- **Effect:** for `n = 20`, the frames are 1, 5, 8, 11, 15 and 18 (counting from 0).
+- **Code:** `pick_indices` in `src/rangecover/data/photos.py`.
+
+### 2026-11-15: Satellite crops for the candidate visits
+- **Result:** 358 of 378 visits have a 100% clear crop within ±30 days. Counts and details are in `docs/data.md` ("Sentinel-2").
+- **Clear rule:** stays at 100%. It removes only 2 visits, and 358 is above the plan's 200 limit. The rule does not change after the freeze.
+- **Cape York gap (18 visits):** `COPERNICUS/S2_SR_HARMONIZED` has no images for Cape York from mid-2018 until November 2018, so the 18 QDACYP visits from June–July 2018 have no crop.
+  - **Options:** fill them from `S2_HARMONIZED` (top of atmosphere) or Planetary Computer, or leave them out.
+  - **Picked:** leave them out.
+  - **Why:** the 2026-11-01 decision says not to mix collections or services in one dataset, because they process images differently. 18 visits from a different source would differ for reasons unrelated to the land.
+- **Tile-edge check:** the downloaded crop is also checked for a 100% clear share, because the server-side score missed pixels outside one image's footprint. This adds a check. It does not change the rule.
+- **Limitations:**
+  - Cape York in 2018 is not in the dataset, and the 2018 share drops from 117 to 97 visits. The location groups for the test runs will have fewer far-northern Queensland visits, so results say less about that region.
+  - The 2 visits removed by the clear rule are both from mid-2018 (one on Cape York), so the clear rule did not remove a region on its own.

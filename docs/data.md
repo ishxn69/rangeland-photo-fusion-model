@@ -106,6 +106,11 @@ Made by `R/extract_labels.R`, which applies the rules in `docs/decisions.md` in 
 - **File access:** 320, 640 and 1920-px previews are public, and a 640-px frame is about 75 KB. Original files (`/file/{id}`) return 403 without a key.
 - **Possible change:** the API spec says all endpoints need a key, so TERN could start enforcing this. If requests fail with 401 or 403, generate a key at https://account.tern.org.au/ and send it in the `X-Api-Key` header.
 - **Date mismatch:** survey and photo dates can differ. NTABRT0001's 2012-03-19 visit has photos dated 20120320, so don't match on exact dates.
+- **Download (2026-11-15):** `src/rangecover/data/photos.py` saved 6,804 photos (378 visits × 18) to `data/photos/<site>_<photo_id>/s<seq>_<k>.jpg`, with `data/photos/manifest.csv` listing each frame's source. Results:
+  - No download failed, and every visit has 18 photos. Every file opens as a JPEG.
+  - The full run took about 2 minutes at about 57 photos per second (4 parallel requests), so the 4-frame backup was not needed.
+  - Sizes: 640×427 px (6,694), 640×480 (90) and 640×426 (20). 23–109 KB, median 67 KB, 450 MB in all.
+  - 391 photos are under 40 KB, the size of label frames. The 6 smallest were checked by eye: all show open, bare country, not labels. The other 385 were not checked.
 
 ## Coordinates
 
@@ -175,6 +180,22 @@ Made by `R/extract_labels.R`, which applies the rules in `docs/decisions.md` in 
   - **Output:** a `(10, 10)` structured array on grid `EPSG:28353`, with its west edge at 319429.4 and north edge at 7534834.5.
   - **Mean reflectance:** B2 0.040, B3 0.066, B4 0.131, B8 0.203, B11 0.305, B12 0.246.
   - **Limit:** this is one dry-season visit, so it doesn't show how often other plots have a fully clear image.
+- **Download (2026-11-15):** `src/rangecover/data/sentinel2.py`, for the 378 candidate visits, with a 100% clear rule:
+
+  | Result | Visits |
+  |---|---|
+  | Candidate visits | 378 |
+  | No `S2_SR_HARMONIZED` image within ±30 days | 18 |
+  | Images found, but none 100% clear | 2 |
+  | **Kept, in `data/sentinel2.npz`** | **358** (336 sites) |
+
+  - **The 100% clear rule removes 2 visits:** QDACYP0002 (2018-06-07; 3 images, best 18% clear) and SATSTP0001 (2018-08-10; 1 image, 57% clear). 358 is above the plan's 200 limit, so the rule stays at 100%.
+  - **The 18 visits with no image** are all on Cape York (QDACYP0004 to QDACYP0024, 9 June to 13 July 2018). This is a gap in the surface-reflectance archive, not cloud. At QDACYP0004, `S2_SR_HARMONIZED` has 0 images from 10 May to 10 July 2018, but the top-of-atmosphere `S2_HARMONIZED` has 12. The SR collection has images there again from November 2018.
+  - **Date gap (image to visit):** 48 visits 0 days, 283 visits 1–7 days, 18 visits 8–14 days, 9 visits 15–28 days. The mean is 3.0 days.
+  - **Values:** all finite, none masked. Mean reflectance: B2 0.057, B3 0.084, B4 0.124, B8 0.227, B11 0.279, B12 0.218. One B2 pixel is exactly 0 (NSANSS0002, a dark green site).
+  - **Tile edges:** where two tiles overlap, the server-side clear score can count an image as 100% clear when part of the plot lies outside it. Those pixels come back as `-inf`. This happened for one visit (SAAKAN0009, tile T53HPA). The script now measures the clear share on the downloaded crop as well, and it takes the next-closest image when the crop fails. For SAAKAN0009 that is the same-day image from the overlapping tile T53HQA.
+  - **Plot centre:** computed locally with `pyproj` (GDA94 to MGA). It gives the same grid as the Earth Engine transform in the C3 check (west 319429.4, north 7534834.5).
+  - **File contents:** `crops` (358, 6, 10, 10) float32 reflectance in band order B2, B3, B4, B8, B11, B12, and for each visit `site`, `site_unique`, `visit_date`, `image_date`, `image_id`, `date_gap` and `clear_fraction`. Per-visit caches are in `data/sentinel2/`.
 - **Sparse early data:** at 5 test points, the first scene was 18 Aug – 24 Nov 2015, and 2016 had only 17–56 scenes per point. Only Sentinel-2A was flying until Sentinel-2B joined in 2017.
 - **Offset:** the +1000 offset affects scenes from 2022-01-25 on. It doesn't apply here if windows end by 2021-11-28 (last photo + 30 days).
 
@@ -186,6 +207,9 @@ Tested in C1 on 2026-11-02, for the grid cell at -22.30, 133.25 (NTABRT0001), fr
 - Dates are `YYYYMMDD`, and coordinates must be on the 0.05° grid.
 - `comment=RXN` requests rain, maximum temperature and minimum temperature.
 - SILO monitors request volume, so request each grid cell once and save the result.
+- **Download (2026-11-15):** `src/rangecover/data/weather.py`, for the 378 candidate visits. They fall in 285 grid cells, and all 285 downloaded with no failures (daily files in `data/silo/`).
+  - `data/weather.csv`: 378 rows, 12 months each of rain, max and min temperature (month rules in `docs/decisions.md`, "Weather months and grid cell"). No missing values. Max temperature is never below min.
+  - 12-month rain: median 291 mm, range 26–2,065 mm. Monthly mean max: 1.1–42.9 °C. Monthly mean min: −3.3–27.5 °C. The coldest values are from alpine plots.
 
 ## Storage
 
@@ -199,6 +223,6 @@ Tested in C1 on 2026-11-02, for the grid cell at -22.30, 133.25 (NTABRT0001), fr
 
 ## Open questions
 
-- How many visits in the final set lack individual frames
+- ~~How many visits in the final set lack individual frames~~ None of the 378: all have 18 photos (2026-11-15).
 - How far apart the default and ground-only labels are, overall and at wooded sites (F9 is decided; see `docs/decisions.md`)
-- Final usable visit count after cloud and date filtering
+- Final usable visit count after cloud and date filtering: 358 visits have a satellite crop (2026-11-15). The count after the photo and weather steps is still open.
