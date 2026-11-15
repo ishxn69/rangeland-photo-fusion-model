@@ -189,6 +189,7 @@ Made by `R/extract_labels.R`, which applies the rules in `docs/decisions.md` in 
   | Images found, but none 100% clear | 2 |
   | **Kept, in `data/sentinel2.npz`** | **358** (336 sites) |
 
+  - **Effect on the dataset:** photos and weather exist for all 378 visits, so these 20 are the only visits lost. Monday's join keeps only visits with all inputs, so the dataset will have **358 visits**.
   - **The 100% clear rule removes 2 visits:** QDACYP0002 (2018-06-07; 3 images, best 18% clear) and SATSTP0001 (2018-08-10; 1 image, 57% clear). 358 is above the plan's 200 limit, so the rule stays at 100%.
   - **The 18 visits with no image** are all on Cape York (QDACYP0004 to QDACYP0024, 9 June to 13 July 2018). This is a gap in the surface-reflectance archive, not cloud. At QDACYP0004, `S2_SR_HARMONIZED` has 0 images from 10 May to 10 July 2018, but the top-of-atmosphere `S2_HARMONIZED` has 12. The SR collection has images there again from November 2018.
   - **Date gap (image to visit):** 48 visits 0 days, 283 visits 1–7 days, 18 visits 8–14 days, 9 visits 15–28 days. The mean is 3.0 days.
@@ -225,4 +226,4 @@ Tested in C1 on 2026-11-02, for the grid cell at -22.30, 133.25 (NTABRT0001), fr
 
 - ~~How many visits in the final set lack individual frames~~ None of the 378: all have 18 photos (2026-11-15).
 - How far apart the default and ground-only labels are, overall and at wooded sites (F9 is decided; see `docs/decisions.md`)
-- Final usable visit count after cloud and date filtering: 358 visits have a satellite crop (2026-11-15). The count after the photo and weather steps is still open.
+- ~~Final usable visit count after cloud and date filtering~~ 358 (2026-11-15). Photos and weather are complete for all 378 candidates, so the satellite step sets the count. Monday's join drops the 20 visits with no crop. If the join finds other problems, it records them here.

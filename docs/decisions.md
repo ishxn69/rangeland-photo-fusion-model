@@ -247,6 +247,7 @@ One entry per choice: the options, what was picked, and why.
   - **Options:** fill them from `S2_HARMONIZED` (top of atmosphere) or Planetary Computer, or leave them out.
   - **Picked:** leave them out.
   - **Why:** the 2026-11-01 decision says not to mix collections or services in one dataset, because they process images differently. 18 visits from a different source would differ for reasons unrelated to the land.
+- **Join rule:** the dataset keeps only visits that have labels, 18 photos, a satellite crop and 12 months of weather (the plan's rule). The 20 visits without a crop are dropped at the join, even though they have photos and weather, so the dataset has 358 visits. They are not filled in later, and the dataset does not change after the freeze.
 - **Tile-edge check:** the downloaded crop is also checked for a 100% clear share, because the server-side score missed pixels outside one image's footprint. This adds a check. It does not change the rule.
 - **Limitations:**
   - Cape York in 2018 is not in the dataset, and the 2018 share drops from 117 to 97 visits. The location groups for the test runs will have fewer far-northern Queensland visits, so results say less about that region.
