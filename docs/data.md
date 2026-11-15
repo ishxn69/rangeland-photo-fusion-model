@@ -46,8 +46,22 @@ Made by `R/extract_labels.R`, which applies the rules in `docs/decisions.md` in 
 | ...and 3 or more sequences with 7 or more frames | **378** |
 
 - **378, not 379:** the earlier count was 389 at the "within 7 days" rule and 379 after the sequence rule. The 10 visits removed by the sequence rule are the same as before. The missing visit drops out at the 7-day rule. We did not find which one, because the old list was not saved.
-- **Output files** (in `data/`, not committed): `labels.csv` (`site, visit_date, latitude, longitude, green, dry, bare`) and `visits.csv` (adds `site_unique`, `photo_id`, `photo_date`, `date_gap`, `n_seq_usable`). Both have 378 rows, no missing values, and every label row adds to 100.
-- **Labels:** made with `ground_fractional = TRUE`. Unknown and `NA` hits were removed, and green, dry and bare were scaled again to add to 100. We did not count how many hits this removed.
+- **Output files** (in `data/`, not committed): `labels.csv` (`site, visit_date, latitude, longitude, green, dry, bare`) and `visits.csv` (adds `site_unique`, `photo_id`, `photo_date`, `date_gap`, `n_seq_usable`, `na_pct`). Both have 378 rows, no missing values, and every label row adds to 100.
+- **Labels:** made with `ground_fractional = TRUE`. Unknown hits were removed, and green, dry and bare were scaled again to add to 100.
+- **Unknown hits removed (`na_pct` in `visits.csv`):** ausplotsR 2.0.5 returns the unknown share in a column named `other`, not `NA` as its help page says. Before scaling, green + dry + bare + other adds to 99.9–100.1 for every visit.
+
+  | Unknown share of a visit's hits | Visits (of 378) |
+  |---|---|
+  | 0% | 195 |
+  | Above 0% | 183 |
+  | Above 5% | 14 |
+  | Above 10% | 11 |
+  | Above 20% | 9 |
+  | Above 40% | 1 |
+
+  - The mean is 1.19% and the median is 0%. The largest is 41.5% (SAAEYB0008, 2020-09-15).
+  - For a visit with 40% unknown hits, scaling makes each of green, dry and bare about 1.7 times larger. Those labels depend on the assumption that the unknown hits look like the known ones. This was not tested.
+  - No visit was removed for a high `na_pct`, because the label rules are fixed (see `docs/decisions.md`).
 - **Date gaps:** 338 visits have a 0-day gap, 35 have 1 day, and 5 have 2–6 days. 37 visits have 4 usable sequences (sequences 1–3 are used).
 - **Mean cover:** green 19%, dry 48%, bare 33%.
 - **Frame lists:** saved to `data/frames/` (one JSON per visit, 388 files, including the 10 visits removed later). The photo script can read them.

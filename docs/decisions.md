@@ -193,3 +193,29 @@ One entry per choice: the options, what was picked, and why.
 - **Dropped:** the earlier photo-features + one-neural-layer method, and the optional all-layer label columns (`green_all`, `dry_all`, `bare_all`) mentioned under F9.
 - **Why record it now:** the pass mark and method list are committed before any model runs, so the verdict can't be tuned to the results.
 - **Rule:** neither the pass mark nor the method list changes after results are seen. If methods must be cut for time, #4 goes first, then #1; #2 and #3 are mandatory.
+
+### 2026-11-15: Unknown hits in the labels
+- **The problem:** some point-intercept hits have no known cover type (`ausplotsR` calls them "other"; its help page calls them "NA"). They belong to none of green, dry or bare, so the three do not add to 100 on their own.
+- **Options:**
+  - Keep the unknown share as a fourth label.
+  - Remove the unknown hits and scale green, dry and bare again so that they add to 100.
+  - Remove visits that have many unknown hits.
+- **Picked:** remove the unknown hits and scale again (the plan's rule). Save each visit's unknown share as `na_pct` in `data/visits.csv`. Do not remove any visit for a high `na_pct`.
+- **Why:** the plan and the pass mark need three labels that add to 100. Removing visits would change the dataset after the rules were set. Saving `na_pct` keeps the information, so the report can show whether the result depends on these visits.
+- **How big the effect is (378 visits):**
+
+  | Unknown share | Visits |
+  |---|---|
+  | 0% | 195 |
+  | Above 0% | 183 |
+  | Above 5% | 14 |
+  | Above 10% | 11 |
+  | Above 20% | 9 |
+
+  - Mean 1.2%, median 0%, largest 41.5%.
+  - 183 visits change by a very small amount. 11 visits have more than 10% unknown hits, and their labels move the most.
+- **Limitations:**
+  - Scaling assumes that the unknown hits would have the same mix of green, dry and bare as the known hits. This was not tested.
+  - A visit with 40% unknown hits has labels that are about 1.7 times its known cover. Errors for these visits may be larger.
+  - Several of the highest values come from the same area (site codes starting SAAEYB). We did not check why.
+- **Future work:** after the results exist, run method #2 and method #3 again without the 11 visits above 10%. If the verdict is the same, say so in the report. If it is different, report that as a limitation. Do not change the dataset or the pass mark.

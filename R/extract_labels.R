@@ -88,12 +88,17 @@ pi <- get_ausplots(my.Plot_IDs = unique(visits$site_location_name),
 fc <- fractional_cover(pi, ground_fractional = TRUE)
 
 # Remove unknown / NA hits, then scale the three fractions to 100.
-for (col in c("green", "brown", "bare")) {
-  if (is.null(fc[[col]])) fc[[col]] <- 0
+# `na_pct` is the percent of hits that were unknown. ausplotsR 2.0.5 names
+# this column "other" (older docs call it "NA"). It is saved in visits.csv so
+# that visits with many removed hits can be found.
+stopifnot("other" %in% names(fc))   # fail loudly if the package renames it again
+for (col in c("green", "brown", "bare", "other")) {
   fc[[col]][is.na(fc[[col]])] <- 0
 }
 fc$total <- fc$green + fc$brown + fc$bare
 labels <- data.frame(site_unique = fc$site_unique,
+                     na_pct = fc$other,
+                     raw_sum = fc$total + fc$other,
                      green = 100 * fc$green / fc$total,
                      dry   = 100 * fc$brown / fc$total,
                      bare  = 100 * fc$bare  / fc$total)
@@ -107,6 +112,11 @@ step("Candidate visits with ground-cover labels", nrow(labels))
 missing <- setdiff(visits$site_unique, labels$site_unique)
 if (length(missing) > 0) cat("No labels for:", paste(missing, collapse = ", "), "\n")
 stopifnot(all(abs(labels$green + labels$dry + labels$bare - 100) < 1e-6))
+cat(sprintf("Before scaling, green+dry+bare+other = %.2f to %.2f\n",
+            min(labels$raw_sum), max(labels$raw_sum)))
+cat(sprintf("Unknown ('other') hits removed: mean %.2f%%, max %.2f%%; %d visits above 0%%, %d above 10%%\n",
+            mean(labels$na_pct), max(labels$na_pct),
+            sum(labels$na_pct > 0), sum(labels$na_pct > 10)))
 stopifnot(!anyDuplicated(labels[, c("site", "visit_date")]))
 cat("OK: every label row adds to 100.\n")
 
@@ -115,10 +125,11 @@ labels <- labels[order(labels$site, labels$visit_date), ]
 write.csv(labels[, c("site", "visit_date", "latitude", "longitude", "green", "dry", "bare")],
           "data/labels.csv", row.names = FALSE)
 
-visits <- visits[visits$site_unique %in% labels$site_unique, ]
+visits <- merge(visits[visits$site_unique %in% labels$site_unique, ],
+                labels[, c("site_unique", "na_pct")], by = "site_unique")
 names(visits)[names(visits) == "site_location_name"] <- "site"
 visits <- visits[order(visits$site, visits$visit_date), ]
 write.csv(visits[, c("site", "site_unique", "visit_date", "photo_id", "photo_date",
-                     "date_gap", "n_seq_usable")],
+                     "date_gap", "n_seq_usable", "na_pct")],
           "data/visits.csv", row.names = FALSE)
 cat("Saved data/labels.csv and data/visits.csv:", nrow(labels), "visits\n")
