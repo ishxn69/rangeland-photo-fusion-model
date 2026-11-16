@@ -12,6 +12,12 @@ The maps come from satellite images. TERN AusPlots also has thousands of **photo
 
 A "no" is still a useful answer. It tells a mapping team whether the photo archive is worth using.
 
+<p align="center">
+  <img src="readme_media/pexels-golimpio-8229754.jpg" alt="Cattle on a large pasture in mountains" width="720">
+  <br>
+  <em>Photo by <a href="https://www.pexels.com/photo/cattle-on-a-large-pasture-in-mountains-8229754/">Gilberto Olympio</a> on Pexels.</em>
+</p>
+
 ## Status
 
 | Stage | State |
