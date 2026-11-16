@@ -10,4 +10,22 @@ dependencies = [
     "pyproj>=3.8.0",
     "python-dotenv>=1.2.4",
     "requests>=2.34.2",
+    "scikit-learn>=1.9.1",
+    "torch>=2.15.0",
+    "transformers>=5.23.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "rangecover"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
