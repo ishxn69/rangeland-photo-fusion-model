@@ -261,3 +261,52 @@ One entry per choice: the options, what was picked, and why.
 - **Picked:** commit only the SHA-256, in `docs/data.md` ("Final dataset"). `.gitignore` is unchanged and no data file is in git.
 - **Why:** the hash records exactly which list was frozen and when, without publishing anything from the data sources. Anyone with the data can rerun `build_dataset.py` and confirm the hash matches.
 - **Limitation:** the list itself lives only in Google Drive. If `data/` is lost, it can be rebuilt by rerunning the download scripts and `build_dataset.py`, but TERN data that has changed since would give a different hash.
+
+### 2026-11-17: RMSE as a second measure
+- **The question:** should the results report only MAE, or another error measure as well?
+- **Options:** MAE only; MAE and MSE; MAE and RMSE.
+- **Picked:** MAE stays the primary measure. RMSE is reported next to it, for green, dry and bare, in every results table. MSE is not reported.
+- **Why:** RMSE gives large misses more weight. If RMSE is much larger than MAE, a few visits have large errors, which MAE alone hides. RMSE is in cover points, like MAE, so the two can be compared. MSE is in squared points, which is hard to read.
+- **Rule:** the pass mark uses MAE only. RMSE does not change the verdict.
+
+### 2026-11-17: All runs in Colab; the Mac only for smoke tests
+- **Picked:** every real run (DINOv2, test runs, models, results) happens in `notebooks/main.ipynb` in Colab. On the Mac, run only `--smoke` and `pytest`, plus git.
+- **Why:** one place for the committed numbers, and Colab has the GPU. A Mac run could give numbers that differ slightly from the Colab run.
+- **How:** `src/` is now an installable package (`rangecover`), so `uv run python -m rangecover.<module>` works the same in both places. The DINOv2 script stops with a clear message when there is no GPU, and `--smoke` runs 2 visits on the CPU into a temporary folder.
+- **Layout change:** DINOv2 is in `src/rangecover/dinov2.py`, not in `features.py`. It needs a GPU and runs once; the other features are fast and are rebuilt in each test run. Two files also keep each one under ~200 lines.
+
+### 2026-11-17: DINOv2 photo features
+- **Model:** `facebook/dinov2-base` (ViT-B/14, 768 numbers per photo), fixed at Hugging Face revision `f9e44c8` (2024-01-17). It is used as-is, with no training.
+- **Input size:** each frame is resized to 336 × 224 px, the full frame, with no crop.
+  - The frames are 640 × 427 (3:2). A 224 × 224 centre crop would throw away a third of the width.
+  - 336 and 224 are both multiples of the 14 px patch size. DINOv2 adjusts its position information to the new size.
+- **Output kept:** the CLS token of the last layer (after the final norm). It is the model's one summary of the full photo.
+- **Precision:** half precision on the GPU. The numbers can differ in the last digits from a full-precision run. This is too small to change a random forest.
+- **Visit features:** the mean of the 18 photo rows, so each visit has 768 numbers. Each visit's 18 × 768 rows are also saved, for later work.
+- **Limitation:** the mean treats all 18 frames as equal. A frame of sky or of a person counts as much as a frame of the ground.
+
+### 2026-11-17: Test runs: location blocks dealt into 5 groups
+- **The problem:** the plan says "5 location groups × 3 random groupings", with nearby sites in the same group. The first idea was k-means with 5 clusters, with seeds 0, 1 and 2.
+- **What the data showed:** 5-cluster k-means gave the same grouping for all 3 seeds (only the cluster numbers changed), and one cluster had 157 of the 336 sites. The 15 runs would have been 1 grouping counted 3 times, with one very large test group.
+- **Picked:**
+  1. Cut the 336 sites into 30 location blocks with k-means on the site points (fixed seed 0). The points are on a unit sphere, so distance follows real distance.
+  2. For each seed (0, 1, 2), shuffle the blocks and deal them in that order. Each block goes to the group with the fewest visits so far.
+  3. Each group is the test group once: 3 × 5 = 15 test runs.
+- **Result:** test groups have 67–78 visits. The 3 groupings are different (for any two sites, two groupings agree on "same group or not" for 71–76% of site pairs).
+- **Why:** all visits of a site and the sites of a block always stay together, so the test sites are not next to the training sites inside a block. Different seeds now give really different groupings, and the group sizes are close.
+- **Limitation:** two blocks next to each other can be in train and test. A test site at the edge of a block can have a training site nearby. The block size (30 blocks, about 11 sites each) was chosen once and not tuned.
+
+### 2026-11-17: How the pass mark is measured
+- **Clarification, not a change:** the pass mark (2026-11-15) says "decreases by" and "increases by". These use the mean over the 15 test runs of the per-run MAE. Condition 2 counts the runs where method #3 has a lower dry MAE than method #2.
+- **Why record it:** the wording allows other readings (for example, one MAE over all test predictions together). This is written before any real model runs, so the reading cannot be chosen after the results.
+- **Floor:** a dummy model that always predicts the training mean gives MAE 15.7 green, 22.2 dry and 23.3 bare (RMSE 20.0, 25.7, 26.5), mean over the 15 runs (Colab run, 17 Nov; the Mac smoke check gave the same numbers). Every real method must do better.
+
+### 2026-11-17: DINOv2 photo copy only for unfinished visits
+- **The problem:** the first Colab run spent about 1 hour copying 6,444 photos from Drive to the Colab disk, one at a time, with the T4 idle. The script copied all photos before it looked for finished features. A new session starts with an empty disk, so every later top-to-bottom run would have copied everything again and then not used it.
+- **Picked:**
+  - The script first lists the visits with no features file on Drive. Only those visits are copied and run. With all 358 done, the cell copies nothing, loads no model and needs no GPU.
+  - The copy runs 16 files at a time. Each copy waits on Drive, not on the CPU, so threads help.
+  - Each photo is copied to a `.part` name, then renamed, so a stopped copy cannot leave a half-copied photo under the real name.
+  - The copy prints its progress every 500 photos.
+- **Why:** the GPU is needed only for DINOv2, which takes minutes. Copy time on a GPU runtime costs compute units for nothing.
+- **Not picked:** packing the photos into one archive in a CPU session first. It would use the least GPU time, but it needs a second session, and with the fix above a full rerun is rare (only if the photos or the model change).
