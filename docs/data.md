@@ -3,7 +3,7 @@
 Facts about the project's data sources: what they contain, their limits and how to read them.
 Choices based on these facts belong in `docs/decisions.md`.
 
-Last updated: 2026-11-15
+Last updated: 2026-11-16
 
 ## Sources
 
@@ -65,6 +65,22 @@ Made by `R/extract_labels.R`, which applies the rules in `docs/decisions.md` in 
 - **Date gaps:** 338 visits have a 0-day gap, 35 have 1 day, and 5 have 2–6 days. 37 visits have 4 usable sequences (sequences 1–3 are used).
 - **Mean cover:** green 19%, dry 48%, bare 33%.
 - **Frame lists:** saved to `data/frames/` (one JSON per visit, 388 files, including the 10 visits removed later). The photo script can read them.
+
+### Final dataset (Checkpoint 1, 2026-11-16)
+
+Made by `src/rangecover/data/build_dataset.py`, which joins the four sources on the visit and keeps only visits that have every input and pass every check. Frozen from this date: the dataset does not change (see "Final visit list kept out of git" in `docs/decisions.md`).
+
+| Result | Visits |
+|---|---|
+| Candidate visits | 378 |
+| Dropped: no `S2_SR_HARMONIZED` image within ±30 days (QDACYP0004–0024, June–July 2018) | 18 |
+| Dropped: no image 100% clear (QDACYP0002 2018-06-07, SATSTP0001 2018-08-10) | 2 |
+| **Kept** | **358** (336 sites) |
+
+- **Checks, run on every visit:** labels present, each 0–100 and adding to 100 (±0.01); dates readable, visit between 2017-03-28 and 2021-10-29, photo gap ≤ 7 days and image gap ≤ 30 days (both matching the stored gaps), image before 2022-01-25; coordinates inside Australia; 18 photos that exist and open; crop 100% clear with every value finite and non-negative; 36 weather values, rain ≥ 0 and max ≥ min temperature. No visit failed a check other than the missing crop.
+- **Limit of the photo check:** PIL's `verify()` reads each file's structure, not every pixel, so a truncated JPEG could pass. The DINOv2 step decodes every photo. The 385 small photos (under 40 KB) are still not checked by eye.
+- **Output files** (in `data/`, not committed): `dataset.csv` (358 rows × 54 columns, no missing values), `dataset_crops.npz` (crops in the same row order, with `site_unique` to check alignment), `final_visits.csv` (`site, site_unique, visit_date, photo_id, image_id`) and `dropped_visits.csv` (each dropped visit and its reason).
+- **Final visit list SHA-256:** `44e16692a04ea9f75682e9436940f41e63e45eafb2f273a275d896181bb6c29c`. To confirm a copy is the frozen list, run `shasum -a 256 data/final_visits.csv`.
 
 ## AusPlots labels
 
@@ -226,4 +242,4 @@ Tested in C1 on 2026-11-02, for the grid cell at -22.30, 133.25 (NTABRT0001), fr
 
 - ~~How many visits in the final set lack individual frames~~ None of the 378: all have 18 photos (2026-11-15).
 - How far apart the default and ground-only labels are, overall and at wooded sites (F9 is decided; see `docs/decisions.md`)
-- ~~Final usable visit count after cloud and date filtering~~ 358 (2026-11-15). Photos and weather are complete for all 378 candidates, so the satellite step sets the count. Monday's join drops the 20 visits with no crop. If the join finds other problems, it records them here.
+- ~~Final usable visit count after cloud and date filtering~~ 358 (2026-11-15). Photos and weather are complete for all 378 candidates, so the satellite step sets the count. Monday's join drops the 20 visits with no crop. If the join finds other problems, it records them here. **Confirmed 2026-11-16:** the join kept 358 and found no other problems (see "Final dataset").

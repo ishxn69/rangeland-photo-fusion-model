@@ -252,3 +252,12 @@ One entry per choice: the options, what was picked, and why.
 - **Limitations:**
   - Cape York in 2018 is not in the dataset, and the 2018 share drops from 117 to 97 visits. The location groups for the test runs will have fewer far-northern Queensland visits, so results say less about that region.
   - The 2 visits removed by the clear rule are both from mid-2018 (one on Cape York), so the clear rule did not remove a region on its own.
+
+### 2026-11-16: Final visit list kept out of git
+- **The problem:** the plan says to commit the final visit list at Checkpoint 1, so the freeze is on record. `data/` is git-ignored, and the data came from services whose access terms may not allow republishing it.
+- **Options:**
+  - Commit `data/final_visits.csv` through a `.gitignore` exception. It holds only IDs (`site, site_unique, visit_date, photo_id, image_id`), but it would still be published with the repo.
+  - Keep the list in `data/` and commit only its SHA-256.
+- **Picked:** commit only the SHA-256, in `docs/data.md` ("Final dataset"). `.gitignore` is unchanged and no data file is in git.
+- **Why:** the hash records exactly which list was frozen and when, without publishing anything from the data sources. Anyone with the data can rerun `build_dataset.py` and confirm the hash matches.
+- **Limitation:** the list itself lives only in Google Drive. If `data/` is lost, it can be rebuilt by rerunning the download scripts and `build_dataset.py`, but TERN data that has changed since would give a different hash.
