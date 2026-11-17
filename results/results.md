@@ -16,7 +16,7 @@ Mean over 15 site-grouped test runs, in cover points (lower is better). The pass
 |---|---|---|---|
 | 1. Dry MAE drops | ≥ 1.5 | +0.92 | no |
 | 2. Runs where #3 has the lower dry MAE | ≥ 12 of 15 | 11 of 15 | no |
-| 3. Green and bare MAE rise | ≤ 0.5 each | green -1.64, bare -0.32 | yes |
+| 3. Green and bare MAE rise | ≤ 0.5 each | green falls 1.64, bare falls 0.32 | yes |
 
 **Verdict: FAIL**
 
