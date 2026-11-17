@@ -351,3 +351,10 @@ From `analysis/critique-results.md` (S3, S4, S5). Numbers from the Colab results
 ### 2026-11-17: Two more modules
 - **Change to the layout:** `src/rangecover/results.py` (table, verdict, page), `src/rangecover/chart.py` (the dry-MAE chart; split from `results.py` on 17 Nov when the notes beside the verdict took it over ~200 lines) and `src/rangecover/atomic.py` (safe file writes; not `io.py`, which could hide the standard `io` module) are added to the minimum layout.
 - **Why:** `evaluate.py` would go over ~200 lines with the chart. The safe-write helper is used by `models.py`, `results.py` and `chart.py`.
+
+### 2026-11-17: Limitation: the linear model beat the random forests
+- **What the results show (`results/results.md`):** method 4 (linear, all inputs) has dry MAE 12.37 and green MAE 8.68. Method 3 (random forest with photos) has 13.65 and 11.15. Method 4 is 2.20 below method 2 on dry MAE, which is more than the 1.5 threshold.
+- **Why this is not a pass:** the pass mark compares method 3 with method 2 only, and it is frozen. Method 4 has no photo-free partner, so its photo gain is not measured. The verdict stays FAIL.
+- **Cause not tested:** possible reasons are few rows (358) against many photo columns (768 per photo), DINOv2 features suiting linear rules, and the ridge penalty. None of these was tested.
+- **Effect:** the random forest may understate the photo gain that a better model reaches.
+- **Future work:** run linear models on satellite only, satellite + weather and all inputs, with the same 15 runs. Check if linear models with all inputs beat the other benchmarks. Do not change the pass mark, the method list or the dataset for the capstone.
