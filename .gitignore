@@ -24,3 +24,7 @@ __pycache__/
 
 # Agent handoff notes
 handoff/
+
+# Submission folder for Google Drive (built by rangecover.submission)
+/submission/
+/src/rangecover/submission.py

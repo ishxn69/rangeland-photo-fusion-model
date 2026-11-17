@@ -11,11 +11,12 @@ import os
 from google.colab import drive
 drive.mount('/content/drive')
 
-os.environ['DATA_DIR'] = '/content/drive/MyDrive/cv_capstone_project/data'
+PROJECT_DIR = '/content/drive/MyDrive/cv_capstone_project'   # the folder that holds pyproject.toml
+os.environ['DATA_DIR'] = PROJECT_DIR + '/data'
 os.environ['UV_PROJECT_ENVIRONMENT'] = '/content/.venv'
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 
-%cd /content/drive/MyDrive/cv_capstone_project
+%cd {PROJECT_DIR}
 !pip install -q uv
 !uv sync --frozen
 ```
