@@ -310,3 +310,29 @@ One entry per choice: the options, what was picked, and why.
   - The copy prints its progress every 500 photos.
 - **Why:** the GPU is needed only for DINOv2, which takes minutes. Copy time on a GPU runtime costs compute units for nothing.
 - **Not picked:** packing the photos into one archive in a CPU session first. It would use the least GPU time, but it needs a second session, and with the fix above a full rerun is rare (only if the photos or the model change).
+
+### 2026-11-17: Feature columns (Step 3)
+- **Satellite (8 columns):** the mean of each of the 6 bands over the 10 × 10 crop, plus the crop means of NDVI = (B8 − B4) / (B8 + B4) and NDTI = (B11 − B12) / (B11 + B12). Each index is calculated per pixel and then averaged.
+- **Weather (3 columns):** total rain over the last 3, 6 and 12 months (`rain_m01` … `rain_m03`, … `m06`, … `m12`), as the plan says.
+- **Photos (20 columns):** PCA of the 768 DINOv2 visit means to 20 columns. In each test run the PCA is fit on the training visits only, and the test visits are projected with it. `svd_solver="full"` gives the exact answer on every machine. In the 15 runs the 20 columns keep 82–83% of the photo spread.
+- **Not used:** the downloaded temperature columns (`tmax_m*`, `tmin_m*`). The plan's feature list for the minimum has rain only. Adding them is future work.
+- **Why:** each column is a standard, simple summary. Satellite and weather columns use only the visit's own data, so they are made once for all visits and cannot leak. The PCA learns from the data, so it is fit inside each run.
+- **Limitations:** the band means and NDVI are strongly related (NDVI is made from B4 and B8). 20 components was set in the plan and not tuned.
+
+### 2026-11-17: Model settings (Step 4)
+- **Random forest (#1–#3):** scikit-learn `RandomForestRegressor`, 500 trees, `random_state=0`, other settings at their defaults. One forest predicts green, dry and bare together (3 outputs). Its predictions already add to 100, because each leaf stores mean label rows.
+- **Linear model (#4): ridge, fixed.** Standardise each column (fit on the training rows), then ridge regression with `alpha=1.0`. The small fixed penalty keeps the weights stable when columns move together. It is not tuned (the plan has no hyperparameter search). Its predictions add to 100 but can be below 0 (10 of 73 test rows in run 0), so the clip in `scale_to_100` matters.
+- **All methods:** every prediction row is clipped at 0 and scaled to 100 (invariant 2).
+- **One loop:** methods differ only in model kind and input columns. #3 is #2 plus the 20 photo columns, nothing else.
+- **Same digits on every rerun:** the forests train on all CPU cores but predict on one thread. On many threads, the tree outputs were added in a different order on each run, and two smoke runs differed by about 1e-15. With one thread, three smoke runs wrote identical files.
+- **No skip of finished runs:** the loop takes about 1 s per run on a 10-core Mac, and a fresh run is how the results are checked again (Tue Step 2).
+
+### 2026-11-17: Result files (Step 5)
+- **Committed, in `results/`:** `run_errors.csv` (MAE and RMSE per run and method), `results_table.csv` (means over the 15 runs, with the mean-only floor as a reference row), `verdict.json`, `dry_mae_by_run.png` and `results.md`.
+- **Not committed:** `data/predictions.csv` (one row per test visit). It holds visit IDs, so it stays with the data (see "Final visit list kept out of git").
+- **Chart:** a paired dot plot of dry MAE per run, #2 against #3, with one line per run between the two dots. The two methods differ in colour and marker shape.
+- **Rule:** the verdict uses #2 and #3 only. #1, #4, the floor and RMSE are context.
+
+### 2026-11-17: Two more modules
+- **Change to the layout:** `src/rangecover/results.py` (table, chart, verdict) and `src/rangecover/atomic.py` (safe file writes; not `io.py`, which could hide the standard `io` module) are added to the minimum layout.
+- **Why:** `evaluate.py` would go over ~200 lines with the chart. The safe-write helper is used by both `models.py` and `results.py`.

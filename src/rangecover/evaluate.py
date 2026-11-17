@@ -23,8 +23,11 @@ MAX_RISE = 0.5        # condition 3: green and bare MAE may rise by at most this
 def scale_to_100(pred: np.ndarray) -> np.ndarray:
     """Make each row of green, dry, bare non-negative and add to 100.
 
-    A random forest or a linear model predicts the three labels on their own,
-    so their sum can drift from 100, and a linear model can go below 0.
+    The models in models.py predict the three labels together, and their raw
+    rows already add to 100 (up to rounding): a forest leaf holds mean label
+    rows, and a linear fit of labels that add to 100 keeps that sum. But a
+    linear model can predict a value below 0, so the clip matters, and this
+    step guarantees invariant 2 for any model, not only for these.
 
     Args:
         pred: Array of shape (n, 3).
