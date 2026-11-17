@@ -1,4 +1,8 @@
 """Step 5 results: the verdict reads methods #2 and #3 only; the table and page are complete."""
+import os
+import subprocess
+import sys
+
 import pandas as pd
 
 from rangecover.results import FLOOR, MEASURES, markdown, summary_table, verdict
@@ -28,3 +32,15 @@ def test_table_has_every_method_and_the_floor_last():
     assert table.loc["m3", "mae_dry"] == 18.0 and table.loc[FLOOR, "mae_dry"] == 25.0
     page = markdown(table, verdict(errors))
     assert "**Verdict: PASS**" in page and page.count("\n| #") == 4
+
+
+def test_imports_under_the_colab_notebook_backend():
+    """A Colab notebook passes MPLBACKEND=module://matplotlib_inline... to `!uv run`.
+
+    The project venv has no matplotlib_inline, so the module must set its own
+    backend before matplotlib is imported (Colab run of 17 Nov failed here).
+    """
+    env = os.environ | {"MPLBACKEND": "module://matplotlib_inline.backend_inline"}
+    done = subprocess.run([sys.executable, "-c", "import rangecover.results"],
+                          env=env, capture_output=True, text=True)
+    assert done.returncode == 0, done.stderr

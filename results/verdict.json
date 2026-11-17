@@ -1,0 +1,13 @@
+{
+  "dry_gain": 0.9153669433504715,
+  "dry_wins": 11,
+  "n_runs": 15,
+  "green_rise": -1.6360931090499418,
+  "bare_rise": -0.3236262004218631,
+  "1_dry_gain_ok": false,
+  "2_dry_wins_ok": false,
+  "3_green_bare_ok": true,
+  "verdict": "fail",
+  "m2_mae_dry": 14.568031817493202,
+  "m3_mae_dry": 13.652664874142731
+}

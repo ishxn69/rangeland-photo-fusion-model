@@ -18,11 +18,16 @@ Run (Mac):    uv run python -m rangecover.results --smoke   (reads and writes th
 """
 import argparse
 import json
+import os
 from pathlib import Path
 
-import matplotlib
-matplotlib.use("Agg")                    # no screen in Colab or in a terminal
-import matplotlib.pyplot as plt          # noqa: E402 - must come after use()
+# Draw to files only (no screen in Colab or in a terminal). Set through the
+# environment, before matplotlib is imported: a Colab notebook sets
+# MPLBACKEND=module://matplotlib_inline.backend_inline, `!uv run` passes it on,
+# and the project venv has no matplotlib_inline, so `import matplotlib` itself
+# fails on that value. matplotlib.use() after the import comes too late.
+os.environ["MPLBACKEND"] = "Agg"
+import matplotlib.pyplot as plt          # noqa: E402 - must come after the backend is set
 import pandas as pd                      # noqa: E402
 
 from rangecover.evaluate import (DRY_GAIN, LABELS, MAX_RISE, MIN_WINS,  # noqa: E402
