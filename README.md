@@ -167,7 +167,7 @@ Copy the setup cell from [instructions.md](instructions.md) into the top of the 
 - The labels describe the **ground layer** (grass, litter, soil), not tree tops. The satellite sees tree tops, so at wooded sites part of any photo gain comes from things the satellite cannot see.
 - Cape York visits from mid-2018 are missing, because the satellite collection has no images there for those months.
 - 378 candidate visits fall to 358 because 20 have no cloud-free satellite crop.
-- **The random forests may be a weak choice for this data (not tested).** The linear model beat both forests that use photos on green and dry cover. We did not test why. Possible reasons: the dataset is small (358 visits) and the photo features are many (DINOv2 gives 768 numbers per photo), so trees may miss weak signals spread over many columns; DINOv2 features are designed so that a simple linear rule can read them; and the ridge penalty keeps the linear weights stable. If a forest is a poor fit, the photo gain measured with forests (method 3 against method 2) may be smaller than the photo gain that a better model could reach.
+- **The random forests may be a weak choice for this data (not tested).** The linear model beat both forests that use photos on green and dry cover. We did not test why. Possible reasons: the dataset is small (358 visits) and the forests ran with default settings and no tuning; the 20 photo columns come from PCA of the DINOv2 features, which are designed so that a simple linear rule can read them, and the PCA keeps only 82–83% of the photo spread; and the ridge penalty keeps the linear weights stable. If a forest is a poor fit, the photo gain measured with forests (method 3 against method 2) may be smaller than the photo gain that a better model could reach.
 - **The linear model has no photo-free partner.** The method list is frozen, so there is no linear model on satellite + weather only. The photo gain inside the best model is not measured.
 
 The full list is under "Limitations" in [docs/decisions.md](docs/decisions.md).
@@ -177,7 +177,7 @@ The full list is under "Limitations" in [docs/decisions.md](docs/decisions.md).
 These items are outside the frozen scope. They do not change the verdict.
 
 1. **Check if linear models with all inputs beat the other benchmarks.** Run a linear model on satellite only, one on satellite + weather, and one on satellite + weather + photos, with the same 15 test runs. Then apply the 1.5 pass mark to the linear pair. This tests if the photo gain is larger with a model that suits the data, and if linear models are better than the forests in general.
-2. **Find out why the forests lose.** Test the reasons in "Known limits": try fewer photo features (for example PCA), more trees or tuned settings, and a model on the photo features alone (method 5 in the plan).
+2. **Find out why the forests lose.** Test the reasons in "Known limits": try a different number of PCA components (20 were used and not tuned), tuned forest settings, and a model on the photo features alone (method 5 in the plan).
 3. **Split the photo gain by open and wooded sites.**
 4. **Rerun methods 2 and 3 without the 11 visits with more than 10% unlabelled cover.**
 
