@@ -330,9 +330,24 @@ One entry per choice: the options, what was picked, and why.
 ### 2026-11-17: Result files (Step 5)
 - **Committed, in `results/`:** `run_errors.csv` (MAE and RMSE per run and method), `results_table.csv` (means over the 15 runs, with the mean-only floor as a reference row), `verdict.json`, `dry_mae_by_run.png` and `results.md`.
 - **Not committed:** `data/predictions.csv` (one row per test visit). It holds visit IDs, so it stays with the data (see "Final visit list kept out of git").
-- **Chart:** a paired dot plot of dry MAE per run, #2 against #3, with one line per run between the two dots. The two methods differ in colour and marker shape.
-- **Rule:** the verdict uses #2 and #3 only. #1, #4, the floor and RMSE are context.
+- **Chart:** a paired dot plot of dry MAE per run, #2 against #3, with one line per run between the two dots. The two methods differ in colour and marker shape. #2 is a hollow ring drawn above the #3 diamond, so a near-tie shows both points (run 1: 0.03 apart; a filled #2 dot hid the #3 diamond there).
+- **Wording:** a signed change is written in words, for example "green falls 1.64", not "green rise −1.64" (`results.change`). The condition names in the pass mark stay as fixed.
+- **Rule:** the verdict uses #2 and #3 only. #1, #4, the floor, RMSE and the notes beside the verdict (see "Notes beside the verdict") are context.
+
+### 2026-11-17: Notes beside the verdict
+- **The problem:** the pass mark asks if the photo gain is large enough, not if there is a gain. The verdict is FAIL, but with photos all three errors fall (green 1.64, dry 0.92, bare 0.32). The best method (#4, linear, dry MAE 12.37) also uses the photos. A reader can read FAIL as "photos do not help" (`analysis/critique-results.md`, S1 and S2).
+- **Picked:** `results.md` gets a section "What the verdict does not show", made by `results.notes`. It gives: each error's change with photos; a 95% range for the dry gain from a bootstrap over sites (`evaluate.dry_gain_range`, 5,000 resamples, seed 0); and the best method by dry MAE, with a note when it uses photos but has no same-kind method without photos. `verdict.json` also holds the range. The README states the same two points.
+- **How the range is made:** for each test visit, gain = |dry error #2| − |dry error #3|. The gains are averaged per site over all runs and visits, then the sites are resampled. Sites are resampled, not runs, because the 15 runs share visits. On the Colab results (17 Nov): +0.37 to +1.82 over 336 sites; 13% of resamples reach 1.5.
+- **Rule:** the notes are context. The verdict, the pass mark and the method list do not change.
+- **Limitation:** the photo gain inside the linear model is not measured. A linear model on satellite + weather is not in the fixed method list. It is future work.
+- **Limitation:** the 15 runs share visits. See "Limitations from the results critique" below.
+
+### 2026-11-17: Limitations from the results critique
+From `analysis/critique-results.md` (S3, S4, S5). Numbers from the Colab results of 17 Nov (`results/run_errors.csv`, `data/predictions.csv`). None of these changes the verdict, the pass mark, the method list or the dataset.
+- **The 15 runs are not 15 independent results (S3).** The 3 groupings use the same 358 visits, so each visit is a test visit 3 times. Condition 2 counts 11 of 15 wins, and the bar is 12. Run 1 is a win by 0.03 points. Only 9 runs win by more than 0.5 points. A sign test on the 15 runs is not correct, because the runs share visits. Condition 2 is applied as written. The report gives the site-bootstrap range of the dry gain (+0.37 to +1.82) next to the count.
+- **The gain changes with the grouping, and one run gives a large part of it (S4).** The mean dry gain is 1.41 for seed 0, 1.14 for seed 1 and 0.20 for seed 2. Run 0 has a gain of 4.88. Without run 0, the mean gain is 0.63. Thus the size of the gain depends on which sites are in the test group. The report gives the gain for each grouping and the gain without run 0.
+- **The gain comes from the greener visits, and the cause is not tested (S5).** The test visits are split into three equal parts by true green cover. The dry gain is −0.30 in the least green third, +0.46 in the middle third and +2.70 in the most green third. Green cover is not tree cover. Thus this split does not show that photos help because they see the ground under trees (F9). The report gives this split as a description only. It must not say that photos help because they see under trees. The split by open and wooded sites stays under Future work (F9).
 
 ### 2026-11-17: Two more modules
-- **Change to the layout:** `src/rangecover/results.py` (table, chart, verdict) and `src/rangecover/atomic.py` (safe file writes; not `io.py`, which could hide the standard `io` module) are added to the minimum layout.
-- **Why:** `evaluate.py` would go over ~200 lines with the chart. The safe-write helper is used by both `models.py` and `results.py`.
+- **Change to the layout:** `src/rangecover/results.py` (table, verdict, page), `src/rangecover/chart.py` (the dry-MAE chart; split from `results.py` on 17 Nov when the notes beside the verdict took it over ~200 lines) and `src/rangecover/atomic.py` (safe file writes; not `io.py`, which could hide the standard `io` module) are added to the minimum layout.
+- **Why:** `evaluate.py` would go over ~200 lines with the chart. The safe-write helper is used by `models.py`, `results.py` and `chart.py`.

@@ -23,10 +23,16 @@ A "no" is still a useful answer. It tells a mapping team whether the photo archi
 | Stage | State |
 |---|---|
 | Labels, photos, satellite crops, weather | ✅ Downloaded (378 candidate visits) |
-| Join into one dataset | ⏳ In progress (358 visits expected) |
-| Photo features, models, results | ⏳ Not started |
+| Join into one dataset | ✅ Done (358 visits) |
+| Photo features, models, results | ✅ Done (Colab run, 17 Nov) |
 
-The verdict (pass or fail) will be added here when the results are ready.
+**Verdict: FAIL.** With photos, the dry-cover error drops 0.92 points (the pass mark needs 1.5), and method 3 wins in 11 of 15 test runs (it needs 12).
+
+**FAIL does not mean that the photos do not help:**
+- With photos, all three errors fall: green by 1.64, dry by 0.92 and bare by 0.32 cover points. A bootstrap over the 336 sites gives a 95% range of +0.37 to +1.82 for the dry gain. The range does not include zero.
+- The best method is the linear model (method 4, dry error 12.37), and it uses the photos. No linear model without photos was run, so the photo gain inside the best model is not measured.
+
+Full table, chart and notes: [`results/results.md`](results/results.md).
 
 ## How it works
 
@@ -54,7 +60,7 @@ The verdict (pass or fail) will be added here when the results are ready.
    - method 3 beats method 2 on dry cover in **12 or more of the 15** test runs;
    - the green and bare errors rise by **no more than 0.5 points**.
 
-The pass mark and method list were committed to git **before any model ran**, so the verdict cannot be tuned to the results.
+The pass mark and method list were committed to git **before any model ran**, so the verdict cannot be tuned to the results. The results page also gives notes beside the verdict (each error's change with photos, a range for the dry gain and the best method). They are context and never change the verdict.
 
 ## The data
 

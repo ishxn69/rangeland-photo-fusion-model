@@ -5,40 +5,35 @@ Reads results/run_errors.csv (from Step 4) and writes, all in results/:
     results_table.csv    mean MAE and RMSE over the test runs, per method, plus
                          the mean-only floor from Step 2.
     verdict.json         the pass-mark numbers, each condition and the verdict.
-    dry_mae_by_run.png   dry MAE in each test run, method #2 against method #3.
-    results.md           the table and the verdict in one page, for the README
-                         and the report.
+    dry_mae_by_run.png   dry MAE in each test run, method #2 against method #3
+                         (drawn by chart.py).
+    results.md           the table, the verdict and the notes beside it, in one
+                         page, for the README and the report.
 
 The verdict uses methods #2 and #3 only (docs/decisions.md, "Pass mark and
 methods" and "How the pass mark is measured"). Methods #1 and #4 and the floor
-are context; they never change it. RMSE never changes it either.
+are context; they never change it. RMSE never changes it either. The notes
+beside the verdict (`notes`) are context too: each label's change with photos,
+the site-bootstrap range of the dry gain (from DATA_DIR/predictions.csv) and
+the best method. They say what a FAIL does not show; they never change it.
 
 Run (Colab):  uv run python -m rangecover.results
 Run (Mac):    uv run python -m rangecover.results --smoke   (reads and writes the smoke folder)
 """
 import argparse
 import json
-import os
-from pathlib import Path
 
-# Draw to files only (no screen in Colab or in a terminal). Set through the
-# environment, before matplotlib is imported: a Colab notebook sets
-# MPLBACKEND=module://matplotlib_inline.backend_inline, `!uv run` passes it on,
-# and the project venv has no matplotlib_inline, so `import matplotlib` itself
-# fails on that value. matplotlib.use() after the import comes too late.
-os.environ["MPLBACKEND"] = "Agg"
-import matplotlib.pyplot as plt          # noqa: E402 - must come after the backend is set
-import pandas as pd                      # noqa: E402
+import pandas as pd
 
-from rangecover.evaluate import (DRY_GAIN, LABELS, MAX_RISE, MIN_WINS,  # noqa: E402
-                                 dummy_check, pass_mark)
-from rangecover.atomic import atomic_path  # noqa: E402
-from rangecover.models import METHODS, RESULTS_DIR, SMOKE_DIR  # noqa: E402
+from rangecover.atomic import atomic_path
+from rangecover.chart import dry_chart
+from rangecover.evaluate import (DRY_GAIN, LABELS, MAX_RISE, MIN_WINS,
+                                 dry_gain_range, dummy_check, pass_mark)
+from rangecover.features import PHOTO
+from rangecover.models import DATA_DIR, METHODS, RESULTS_DIR, SMOKE_DIR
 
 MEASURES = [f"{m}_{k}" for m in ("mae", "rmse") for k in LABELS]
 FLOOR = "floor"                          # the mean-only model, as a reference row
-COLOURS = {"m2": "#2a78d6", "m3": "#eb6834"}   # validated pair (dataviz palette slots 1-2)
-INK, INK_2, RULE, SURFACE = "#0b0b0b", "#52514e", "#dddcd6", "#fcfcfb"
 
 
 def summary_table(run_errors: pd.DataFrame, floor: pd.DataFrame) -> pd.DataFrame:
@@ -77,62 +72,38 @@ def verdict(run_errors: pd.DataFrame) -> dict:
     return result
 
 
-def dry_chart(run_errors: pd.DataFrame, result: dict, path: Path) -> None:
-    """Draw the dry MAE of #2 and #3 in each test run as a paired dot plot.
+def change(diff: float) -> str:
+    """A signed change in words ("falls 1.64", "rises 0.20"); easier to read than "-1.64"."""
+    return "does not change" if round(abs(diff), 2) == 0 else \
+        f"{'falls' if diff < 0 else 'rises'} {abs(diff):.2f}"
 
-    One column per run. A grey line joins the two dots of a run, so the eye
-    reads each run's gain or loss. The two methods differ in colour and in
-    marker shape, so the chart also works without colour. Thin vertical rules
-    split the runs into their 3 random groupings.
-    """
-    wide = run_errors.pivot(index="run", columns="method", values="mae_dry").sort_index()
-    seeds = run_errors.drop_duplicates("run").set_index("run")["seed"].loc[wide.index]
-    x = range(len(wide))
 
-    fig, ax = plt.subplots(figsize=(9, 4.8), dpi=200, facecolor=SURFACE)
-    ax.set_facecolor(SURFACE)
-    ax.vlines(x, wide[["m2", "m3"]].min(axis=1), wide[["m2", "m3"]].max(axis=1),
-              color="#a3a29c", linewidth=2, zorder=1)
-    for key, marker in (("m2", "o"), ("m3", "D")):
-        label = next(m.label for m in METHODS if m.name == key)
-        ax.scatter(x, wide[key], s=56 if marker == "o" else 44, marker=marker,
-                   color=COLOURS[key], edgecolor=SURFACE, linewidth=1.5, zorder=2, label=label)
-
-    # Split and name the groupings (one per seed).
-    for i, (seed, idx) in enumerate(pd.Series(range(len(wide)), index=seeds).groupby(level=0)):
-        if i:
-            ax.axvline(idx.min() - 0.5, color=RULE, linewidth=1, zorder=0)
-        ax.text(idx.mean(), 1.0, f"grouping {i + 1} (seed {seed})", transform=ax.get_xaxis_transform(),
-                ha="center", va="bottom", fontsize=8, color=INK_2)
-
-    ax.set_xticks(list(x), [str(r) for r in wide.index])
-    ax.set_xlim(-0.6, len(wide) - 0.4)
-    ax.set_xlabel("Test run", color=INK_2)
-    ax.set_ylabel("Dry-cover MAE (cover points)", color=INK_2)
-    ax.grid(axis="y", color=RULE, linewidth=0.8)
-    ax.set_axisbelow(True)
-    ax.tick_params(colors=INK_2, length=0)
-    for side in ("top", "right", "left"):
-        ax.spines[side].set_visible(False)
-    ax.spines["bottom"].set_color(RULE)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=2, frameon=False,
-              fontsize=9, labelcolor=INK)
-
-    fig.suptitle(f"Method #3 (with photos) had a lower dry-cover error than #2 in "
-                 f"{result['dry_wins']} of {result['n_runs']} test runs",
-                 x=0.06, ha="left", fontsize=12, color=INK, fontweight="bold")
-    fig.text(0.06, 0.895,f"Mean dry MAE {result['m2_mae_dry']:.2f} → {result['m3_mae_dry']:.2f} "
-             f"(gain {result['dry_gain']:+.2f}). Pass mark: gain ≥ {DRY_GAIN}, ≥ {MIN_WINS} of 15 "
-             f"wins, green and bare rise ≤ {MAX_RISE}. Verdict: {result['verdict'].upper()}.",
-             fontsize=9, color=INK_2)
-    fig.tight_layout(rect=(0.03, 0, 1, 0.89))
-    with atomic_path(path) as tmp:
-        fig.savefig(tmp, facecolor=SURFACE)
-    plt.close(fig)
+def notes(table: pd.DataFrame, result: dict) -> list[str]:
+    """Context beside the verdict: each error's change with photos, the dry-gain
+    range and the best method, so a FAIL is not read as "no gain"."""
+    diff = {k: table.loc["m3", f"mae_{k}"] - table.loc["m2", f"mae_{k}"] for k in LABELS}
+    words = [f"{k} {change(d)}" for k, d in diff.items()]
+    lines = [f"- **Photos and each error.** With photos (#3 against #2), the MAE for "
+             f"{', '.join(words[:2])} and {words[2]} cover points."]
+    if "dry_gain_low" in result:
+        lines.append(
+            f"- **Range of the dry gain.** The {result['n_runs']} runs share visits, so {result['dry_wins']} of "
+            f"{result['n_runs']} is not {result['n_runs']} separate results. A bootstrap over the "
+            f"{result['n_sites']} sites gives a 95% range of {result['dry_gain_low']:+.2f} to "
+            f"{result['dry_gain_high']:+.2f} for the dry gain. "
+            f"{result['share_at_pass_mark']:.0%} of the resamples reach the {DRY_GAIN} pass mark.")
+    methods = {m.name: m for m in METHODS}
+    best = table.drop(index=FLOOR)["mae_dry"].idxmin()
+    text = (f"- **Best method.** {methods[best].label} has the lowest dry MAE "
+            f"({table.loc[best, 'mae_dry']:.2f}).")
+    if best not in ("m2", "m3") and set(PHOTO) <= set(methods[best].columns):
+        text += (" It uses the photos. No method of the same kind without photos was run "
+                 "(the method list is fixed), so the photo gain inside it is not measured.")
+    return lines + [text]
 
 
 def markdown(table: pd.DataFrame, result: dict) -> str:
-    """The results page: the table, the three conditions and the verdict."""
+    """The results page: the table, the three conditions, the verdict and the notes."""
     head = ["Method"] + [f"{m.upper()} {k}" for m, k in (c.split("_") for c in MEASURES)]
     lines = ["# Results", "", f"Mean over {int(table['n_runs'].iloc[0])} site-grouped test runs, "
              "in cover points (lower is better). The pass mark uses MAE only.", "",
@@ -145,9 +116,12 @@ def markdown(table: pd.DataFrame, result: dict) -> str:
               f"| 1. Dry MAE drops | ≥ {DRY_GAIN} | {result['dry_gain']:+.2f} | {ok[result['1_dry_gain_ok']]} |",
               f"| 2. Runs where #3 has the lower dry MAE | ≥ {MIN_WINS} of 15 | "
               f"{result['dry_wins']} of {result['n_runs']} | {ok[result['2_dry_wins_ok']]} |",
-              f"| 3. Green and bare MAE rise | ≤ {MAX_RISE} each | green {result['green_rise']:+.2f}, "
-              f"bare {result['bare_rise']:+.2f} | {ok[result['3_green_bare_ok']]} |",
+              f"| 3. Green and bare MAE rise | ≤ {MAX_RISE} each | green {change(result['green_rise'])}, "
+              f"bare {change(result['bare_rise'])} | {ok[result['3_green_bare_ok']]} |",
               "", f"**Verdict: {result['verdict'].upper()}**", "",
+              "## What the verdict does not show", "",
+              "The verdict asks if the photo gain reaches the pass mark. These notes "
+              "are context and do not change it.", "", *notes(table, result), "",
               "![Dry MAE per test run](dry_mae_by_run.png)", ""]
     return "\n".join(lines)
 
@@ -161,6 +135,11 @@ def main() -> None:
     run_errors = pd.read_csv(out / "run_errors.csv")
     table = summary_table(run_errors, dummy_check())
     result = verdict(run_errors)
+    predictions = (SMOKE_DIR if args.smoke else DATA_DIR) / "predictions.csv"
+    if predictions.exists():
+        result |= dry_gain_range(pd.read_csv(predictions))
+    else:
+        print(f"No {predictions}: the results page has no range for the dry gain")
 
     with atomic_path(out / "results_table.csv") as tmp:
         table.to_csv(tmp)

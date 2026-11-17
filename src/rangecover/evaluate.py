@@ -91,6 +91,36 @@ def pass_mark(m2: pd.DataFrame, m3: pd.DataFrame) -> dict:
     return result
 
 
+def dry_gain_range(predictions: pd.DataFrame, n_boot: int = 5000, seed: int = 0) -> dict:
+    """95% range of the dry gain of method #3 over #2, by a site bootstrap.
+
+    Context only: the pass mark never reads it. The 15 runs share visits (each
+    visit is a test visit once per grouping), so a count of wins is not 15
+    separate results. Resampling sites gives a range that respects that.
+
+    Each test visit's gain is |error #2| - |error #3| for dry. The gains are
+    averaged per site (all runs and visits of the site), and the sites are
+    resampled with replacement `n_boot` times.
+
+    Args:
+        predictions: One row per (run, method, test visit), from models.py,
+            with site_unique ("<site>-<visit>"), true_dry and pred_dry.
+
+    Returns:
+        {"dry_gain_low", "dry_gain_high", "share_at_pass_mark", "n_sites"};
+        the last share is the part of the resamples with a gain >= DRY_GAIN.
+    """
+    err = predictions.assign(e=(predictions["pred_dry"] - predictions["true_dry"]).abs())
+    wide = err.pivot_table(index=["run", "site_unique"], columns="method", values="e").reset_index()
+    site = wide["site_unique"].str.rsplit("-", n=1).str[0]
+    per_site = (wide["m2"] - wide["m3"]).groupby(site).mean().to_numpy()
+    rng = np.random.default_rng(seed)
+    boot = rng.choice(per_site, size=(n_boot, len(per_site))).mean(axis=1)
+    low, high = np.percentile(boot, [2.5, 97.5])
+    return {"dry_gain_low": float(low), "dry_gain_high": float(high),
+            "share_at_pass_mark": float((boot >= DRY_GAIN).mean()), "n_sites": len(per_site)}
+
+
 def dummy_check() -> pd.DataFrame:
     """Score a model that always predicts the training-label mean.
 
