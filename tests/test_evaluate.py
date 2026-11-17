@@ -59,3 +59,22 @@ def test_pass_mark_fails_when_green_gets_worse():
 def test_pass_mark_needs_the_same_runs():
     with pytest.raises(ValueError):
         pass_mark(_runs(20.0), _runs(18.0, n=14))
+
+
+def test_dry_gain_range_resamples_sites_and_is_fixed_by_seed():
+    """The range brackets the true gain, and the same seed gives the same range."""
+    from rangecover.evaluate import dry_gain_range
+
+    rng = np.random.default_rng(1)
+    rows = []
+    for site in range(40):
+        gain = rng.normal(1.0, 1.0)
+        for run in range(3):
+            for method, err in (("m2", 10 + gain), ("m3", 10.0)):
+                rows.append({"run": run, "method": method, "site_unique": f"S{site:04d}-1",
+                             "true_dry": 50.0, "pred_dry": 50.0 + err})
+    preds = pd.DataFrame(rows)
+    out = dry_gain_range(preds)
+    assert out["n_sites"] == 40 and out["dry_gain_low"] < 1.0 < out["dry_gain_high"]
+    assert dry_gain_range(preds) == out
+    assert dry_gain_range(preds, seed=1) != out

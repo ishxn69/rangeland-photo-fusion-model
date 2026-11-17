@@ -5,7 +5,7 @@ import sys
 
 import pandas as pd
 
-from rangecover.results import FLOOR, MEASURES, markdown, summary_table, verdict
+from rangecover.results import FLOOR, MEASURES, change, markdown, summary_table, verdict
 
 
 def _run_errors(dry: dict[str, float], n_runs: int = 15) -> pd.DataFrame:
@@ -44,3 +44,22 @@ def test_imports_under_the_colab_notebook_backend():
     done = subprocess.run([sys.executable, "-c", "import rangecover.results"],
                           env=env, capture_output=True, text=True)
     assert done.returncode == 0, done.stderr
+
+
+def test_fail_page_shows_the_gain_and_the_best_method():
+    """A FAIL with a real gain must not read as "no gain" (critique S1, S2)."""
+    errors = _run_errors({"m1": 22.0, "m2": 20.0, "m3": 19.0, "m4": 17.0})
+    floor = pd.DataFrame({c: 25.0 for c in MEASURES}, index=range(15))
+    table = summary_table(errors, floor)
+    result = verdict(errors) | {"dry_gain_low": 0.4, "dry_gain_high": 1.8,
+                                "share_at_pass_mark": 0.13, "n_sites": 336}
+    page = markdown(table, result)
+    assert "**Verdict: FAIL**" in page
+    assert "dry falls 1.00" in page and "+0.40 to +1.80" in page
+    assert "| green does not change, bare does not change |" in page   # not "+0.00"
+    assert "#4 Linear: all inputs has the lowest dry MAE" in page and "uses the photos" in page
+
+
+def test_change_reads_as_words():
+    assert change(-1.636) == "falls 1.64" and change(0.2) == "rises 0.20"
+    assert change(-0.001) == "does not change"

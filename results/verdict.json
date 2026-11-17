@@ -9,5 +9,9 @@
   "3_green_bare_ok": true,
   "verdict": "fail",
   "m2_mae_dry": 14.568031817493202,
-  "m3_mae_dry": 13.652664874142731
+  "m3_mae_dry": 13.652664874142731,
+  "dry_gain_low": 0.3723417772234601,
+  "dry_gain_high": 1.8191444346849517,
+  "share_at_pass_mark": 0.1294,
+  "n_sites": 336
 }
